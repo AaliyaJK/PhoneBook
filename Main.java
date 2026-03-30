@@ -9,10 +9,21 @@ class Contact {
         this.phone = phone;
     }
 }
+class Node {
+    Contact data;
+    Node next;
+    Node prev;
+
+    Node(Contact data) {
+        this.data = data;
+        this.next = null;
+        this.prev = null;
+    }
+}
 
 public class Main {
 
-    static ArrayList<Contact> contacts = new ArrayList<>();
+    static DoublyLinkedList contacts = new DoublyLinkedList();
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
@@ -26,17 +37,30 @@ public class Main {
 
             int choice = sc.nextInt();
             sc.nextLine(); // consume newline
+            String name = " ";
+            String phone = " ";
+            if(choice ==1 || choice==3){
+            System.out.print("Enter name: ");
+            name = sc.nextLine();
+            System.out.print("Enter phone: ");
+            phone = sc.nextLine();   
+            }
 
             switch (choice) {
                 case 1:
-                    addContact(sc);
+                    contacts.insert(new Contact(name, phone));
                     break;
                 case 2:
-                    viewContacts();
+                    contacts.display();
                     break;
                 case 3:
-                    searchContact(sc);
-                    break;
+                    Node result = contacts.search(name);
+                    if (result != null) {
+                        System.out.println("Found: " + result.data.name + " - " + result.data.phone);
+                    } else {
+                        System.out.println("Not found");
+       }
+                   break;
                 case 4:
                     System.out.println("Exiting...");
                     return;
@@ -45,40 +69,46 @@ public class Main {
             }
         }
     }
+}
 
-    static void addContact(Scanner sc) {
-        System.out.print("Enter name: ");
-        String name = sc.nextLine();
+    
+class DoublyLinkedList {
+    Node head;
 
-        System.out.print("Enter phone: ");
-        String phone = sc.nextLine();
+    void insert(Contact contact) {
+        Node newNode = new Node(contact);
 
-        contacts.add(new Contact(name, phone));
-        System.out.println("Contact added!");
-    }
-
-    static void viewContacts() {
-        if (contacts.isEmpty()) {
-            System.out.println("No contacts available");
+        if (head == null) {
+            head = newNode;
             return;
         }
 
-        for (Contact c : contacts) {
-            System.out.println(c.name + " - " + c.phone);
+        Node temp = head;
+        while (temp.next != null) {
+            temp = temp.next;
+        }
+
+        temp.next = newNode;
+        newNode.prev = temp;
+    }
+        void display() {
+        Node temp = head;
+
+        while (temp != null) {
+            System.out.println(temp.data.name + " - " + temp.data.phone);
+            temp = temp.next;
         }
     }
+        Node search(String name) {
+        Node temp = head;
 
-    static void searchContact(Scanner sc) {
-        System.out.print("Enter name to search: ");
-        String name = sc.nextLine();
-
-        for (Contact c : contacts) {
-            if (c.name.equalsIgnoreCase(name)) {
-                System.out.println("Found: " + c.name + " - " + c.phone);
-                return;
+        while (temp != null) {
+            if (temp.data.name.equalsIgnoreCase(name)) {
+                return temp;
             }
+            temp = temp.next;
         }
 
-        System.out.println("Contact not found");
+        return null;
     }
 }
