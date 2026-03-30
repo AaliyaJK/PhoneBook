@@ -39,11 +39,14 @@ public class Main {
             sc.nextLine(); // consume newline
             String name = " ";
             String phone = " ";
-            if(choice ==1 || choice==3){
-            System.out.print("Enter name: ");
-            name = sc.nextLine();
-            System.out.print("Enter phone: ");
-            phone = sc.nextLine();   
+            if (choice == 1) {
+                System.out.print("Enter name: ");
+                name = sc.nextLine().trim();
+                System.out.print("Enter phone: ");
+                phone = sc.nextLine();
+            } else if (choice == 3) {
+                System.out.print("Enter name to search: ");
+                name = sc.nextLine();
             }
 
             switch (choice) {
@@ -73,6 +76,7 @@ public class Main {
 
     
 class DoublyLinkedList {
+    HashMap<String, Node> map = new HashMap<>();
     Node head;
 
     void insert(Contact contact) {
@@ -80,7 +84,9 @@ class DoublyLinkedList {
 
         if (head == null) {
             head = newNode;
+            map.put(contact.name.toLowerCase(), newNode);
             return;
+            
         }
 
         Node temp = head;
@@ -90,6 +96,8 @@ class DoublyLinkedList {
 
         temp.next = newNode;
         newNode.prev = temp;
+        map.put(contact.name.toLowerCase(), newNode);
+
     }
         void display() {
         Node temp = head;
@@ -100,15 +108,6 @@ class DoublyLinkedList {
         }
     }
         Node search(String name) {
-        Node temp = head;
-
-        while (temp != null) {
-            if (temp.data.name.equalsIgnoreCase(name)) {
-                return temp;
-            }
-            temp = temp.next;
-        }
-
-        return null;
-    }
+            return map.get(name.toLowerCase());
+}
 }
