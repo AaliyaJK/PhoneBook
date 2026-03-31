@@ -1,14 +1,24 @@
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 class Contact {
     String name;
     String phone;
+    LocalDateTime createdAt;
 
     Contact(String name, String phone) {
         this.name = name;
         this.phone = phone;
+        this.createdAt = LocalDateTime.now();
     }
 }
+
+class TrieNode {
+    TrieNode[] children = new TrieNode[26];
+    boolean isEnd;
+}
+
 class Node {
     Contact data;
     Node next;
@@ -16,13 +26,11 @@ class Node {
 
     Node(Contact data) {
         this.data = data;
-        this.next = null;
-        this.prev = null;
     }
 }
 
 class Action {
-    String type; // "add", "delete"
+    String type;
     Contact contact;
 
     Action(String type, Contact contact) {
@@ -31,12 +39,64 @@ class Action {
     }
 }
 
+class Trie {
+    TrieNode root = new TrieNode();
+
+    void insert(String word) {
+        TrieNode node = root;
+
+        for (char c : word.toLowerCase().toCharArray()) {
+            int index = c - 'a';
+
+            if (node.children[index] == null) {
+                node.children[index] = new TrieNode();
+            }
+
+            node = node.children[index];
+        }
+
+        node.isEnd = true;
+    }
+        List<String> startsWith(String prefix) {
+        List<String> result = new ArrayList<>();
+        TrieNode node = root;
+
+        for (char c : prefix.toLowerCase().toCharArray()) {
+            int index = c - 'a';
+
+            if (node.children[index] == null) {
+                return result;
+            }
+
+            node = node.children[index];
+        }
+
+        dfs(node, prefix, result);
+        return result;
+    }
+        void dfs(TrieNode node, String prefix, List<String> result) {
+        if (node.isEnd) {
+            result.add(prefix);
+        }
+
+        for (int i = 0; i < 26; i++) {
+            if (node.children[i] != null) {
+                char c = (char) (i + 'a');
+                dfs(node.children[i], prefix + c, result);
+            }
+        }
+    }
+}
+
+
+
 public class Main {
 
     static DoublyLinkedList contacts = new DoublyLinkedList();
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
+
         contacts.loadFromFile();
 
         while (true) {
@@ -48,18 +108,21 @@ public class Main {
             System.out.println("5. Exit");
             System.out.println("6. Undo");
             System.out.println("7. Show Recent Searches");
+            System.out.println("8. Suggest Contacts");
 
             int choice = sc.nextInt();
-            sc.nextLine(); // consume newline
-            String name = " ";
-            String phone = " ";
+            sc.nextLine();
+
+            String name = "";
+            String phone = "";
+
             if (choice == 1) {
                 System.out.print("Enter name: ");
                 name = sc.nextLine().trim();
                 System.out.print("Enter phone: ");
                 phone = sc.nextLine();
-            } else if (choice == 3) {
-                System.out.print("Enter name to search: ");
+            } else if (choice == 3 || choice == 4) {
+                System.out.print("Enter name: ");
                 name = sc.nextLine();
             }
 
@@ -76,22 +139,25 @@ public class Main {
                         System.out.println("Found: " + result.data.name + " - " + result.data.phone);
                     } else {
                         System.out.println("Not found");
-       }
-                   break;
+                    }
+                    break;
                 case 4:
-                    System.out.print("Enter name to delete: ");
-                    name = sc.nextLine();
                     contacts.delete(name);
                     break;
                 case 5:
-                    System.out.println("Exiting...");
                     contacts.saveToFile();
+                    System.out.println("Exiting...");
                     return;
                 case 6:
                     contacts.undo();
                     break;
                 case 7:
                     contacts.showRecent();
+                    break;
+                case 8:
+                    System.out.print("Enter prefix: ");
+                    String prefix = sc.nextLine();
+                    contacts.suggest(prefix);
                     break;
                 default:
                     System.out.println("Invalid choice");
@@ -100,181 +166,203 @@ public class Main {
     }
 }
 
-    
 class DoublyLinkedList {
+
     HashMap<String, Node> map = new HashMap<>();
     Stack<Action> undoStack = new Stack<>();
     Queue<String> recent = new LinkedList<>();
+    Trie trie = new Trie();
     Node head;
 
+    // ✅ INSERT
     void insert(Contact contact) {
         Node newNode = new Node(contact);
+        trie.insert(contact.name);
 
         if (head == null) {
             head = newNode;
-            map.put(contact.name.toLowerCase(), newNode);
-            undoStack.push(new Action("add",newNode.data));
-            return;
-            
+        } else {
+            Node temp = head;
+            while (temp.next != null) temp = temp.next;
+            temp.next = newNode;
+            newNode.prev = temp;
         }
 
-        Node temp = head;
-        while (temp.next != null) {
-            temp = temp.next;
-           
-
-    }   temp.next = newNode;
-        newNode.prev = temp;
-        temp=newNode;
         map.put(contact.name.toLowerCase(), newNode);
-        undoStack.push(new Action("add",temp.data));
-} 
+        undoStack.push(new Action("add", contact));
+
+        System.out.println("Contact added!");
+    }
+
+    // ✅ INSERT WITHOUT UNDO
     void insertWithoutUndo(Contact contact) {
-    Node newNode = new Node(contact);
+        Node newNode = new Node(contact);
+        trie.insert(contact.name);
 
-    if (head == null) {
-        head = newNode;
-    } else {
-        Node temp = head;
-        while (temp.next != null) {
-            temp = temp.next;
+        if (head == null) {
+            head = newNode;
+        } else {
+            Node temp = head;
+            while (temp.next != null) temp = temp.next;
+            temp.next = newNode;
+            newNode.prev = temp;
         }
 
-        temp.next = newNode;
-        newNode.prev = temp;
+        map.put(contact.name.toLowerCase(), newNode);
     }
 
-    map.put(contact.name.toLowerCase(), newNode);
-}
+    // ✅ DELETE
     void delete(String name) {
-    Node node = map.get(name.toLowerCase());
+        Node node = map.get(name.toLowerCase());
 
-    if (node == null) {
-        System.out.println("Contact not found");
-        return;
-    }
-    undoStack.push(new Action("delete", node.data));
+        if (node == null) {
+            System.out.println("Contact not found");
+            return;
+        }
 
-    if (node.prev != null) {
-        node.prev.next = node.next;
-    } else {
-        head = node.next;
-    }
+        undoStack.push(new Action("delete", node.data));
 
-    if (node.next != null) {
-        node.next.prev = node.prev;
+        deleteWithoutUndo(name);
+
+        System.out.println("Deleted successfully");
     }
 
-    map.remove(name.toLowerCase());
-
-    System.out.println("Deleted successfully");
-} 
+    // ✅ DELETE WITHOUT UNDO
     void deleteWithoutUndo(String name) {
-    Node node = map.get(name.toLowerCase());
+        Node node = map.get(name.toLowerCase());
+        if (node == null) return;
 
-    if (node == null) return;
+        if (node.prev != null) node.prev.next = node.next;
+        else head = node.next;
 
-    if (node.prev != null) {
-        node.prev.next = node.next;
-    } else {
-        head = node.next;
+        if (node.next != null) node.next.prev = node.prev;
+
+        map.remove(name.toLowerCase());
     }
 
-    if (node.next != null) {
-        node.next.prev = node.prev;
-    }
-
-    map.remove(name.toLowerCase());
-}
-        void display() {
-        Node temp = head;
-
-        while (temp != null) {
-            System.out.println(temp.data.name + " - " + temp.data.phone);
-            temp = temp.next;
-        }
-    }
-
+    // ✅ UNDO
     void undo() {
-    if (undoStack.isEmpty()) {
-        System.out.println("Nothing to undo");
-        return;
+        if (undoStack.isEmpty()) {
+            System.out.println("Nothing to undo");
+            return;
+        }
+
+        Action last = undoStack.pop();
+
+        if (last.type.equals("add")) {
+            deleteWithoutUndo(last.contact.name);
+            System.out.println("Undo: Add reversed");
+        } else if (last.type.equals("delete")) {
+            insertWithoutUndo(last.contact);
+            System.out.println("Undo: Delete reversed");
+        }
     }
 
-    Action last = undoStack.pop();
-
-    if (last.type.equals("add")) {
-        deleteWithoutUndo(last.contact.name);
-        System.out.println("Undo: Last add reversed");
-    }
-    else if (last.type.equals("delete")) {
-        insertWithoutUndo(last.contact);
-        System.out.println("Undo: Deleted contact restored");
-    }
-}
+    // ✅ SEARCH + QUEUE
     Node search(String name) {
-            Node result = map.get(name.toLowerCase());
+        Node result = map.get(name.toLowerCase());
 
-            if (result != null) {
-        //  Add to queue
+        if (result != null) {
             recent.add(name);
+            if (recent.size() > 5) recent.poll();
+        }
 
-        // limit size to 5
-            if (recent.size() > 5) {
-            recent.poll(); // removes oldest
+        return result;
+    }
+
+    // ✅ RECENT
+    void showRecent() {
+        if (recent.isEmpty()) {
+            System.out.println("No recent searches");
+            return;
+        }
+
+        System.out.println("Recent Searches:");
+        for (String s : recent) System.out.println(s);
+    }
+
+    // ✅ DISPLAY
+    void display() {
+    Node temp = head;
+
+    DateTimeFormatter formatter =
+        DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
+
+    while (temp != null) {
+        System.out.println(
+            temp.data.name + " - " +
+            temp.data.phone + " - " +
+            temp.data.createdAt.format(formatter)
+        );
+        temp = temp.next;
+    }
+}
+
+    // ✅ SAVE (WITH TIME)
+    void saveToFile() {
+        try {
+            java.io.BufferedWriter writer =
+                    new java.io.BufferedWriter(new java.io.FileWriter("contacts.txt"));
+
+            Node temp = head;
+            while (temp != null) {
+                writer.write(temp.data.name + "," +
+                        temp.data.phone + "," +
+                        temp.data.createdAt);
+                writer.newLine();
+                temp = temp.next;
+            }
+
+            writer.close();
+            System.out.println("Saved to file");
+
+        } catch (Exception e) {
+            System.out.println("Error saving file");
         }
     }
 
-    return result;
-}
-void showRecent() {
-    if (recent.isEmpty()) {
-        System.out.println("No recent searches");
-        return;
-    }
+    // ✅ LOAD (WITH TIME)
+    void loadFromFile() {
+        try {
+            java.io.BufferedReader reader =
+                    new java.io.BufferedReader(new java.io.FileReader("contacts.txt"));
 
-    System.out.println("Recent Searches:");
-    for (String name : recent) {
-        System.out.println(name);
-    }
-}
-void saveToFile() {
-    try {
-        java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.FileWriter("contacts.txt"));
+            String line;
 
-        Node temp = head;
-        while (temp != null) {
-            writer.write(temp.data.name + "," + temp.data.phone);
-            writer.newLine();
-            temp = temp.next;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+
+                String name = parts[0];
+                String phone = parts[1];
+                LocalDateTime time = LocalDateTime.now();
+
+                if (parts.length > 2) {
+                    time = LocalDateTime.parse(parts[2]);
+                }   
+
+                Contact c = new Contact(name, phone);
+                c.createdAt = time;
+
+                insertWithoutUndo(c);
+            }
+
+            reader.close();
+            System.out.println("Data loaded");
+
+        } catch (Exception e) {
+            System.out.println("No previous data");
         }
-
-        writer.close();
-        System.out.println("Contacts saved to file");
-
-    } catch (Exception e) {
-        System.out.println("Error saving file");
     }
-}
-void loadFromFile() {
-    try {
-        java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader("contacts.txt"));
+    void suggest(String prefix) {
+    List<String> list = trie.startsWith(prefix);
 
-        String line;
-
-        while ((line = reader.readLine()) != null) {
-            String[] parts = line.split(",");
-            String name = parts[0];
-            String phone = parts[1];
-
-            insertWithoutUndo(new Contact(name, phone));
+    if (list.isEmpty()) {
+        System.out.println("No suggestions");
+    } else {
+        System.out.println("Suggestions:");
+        for (String s : list) {
+            System.out.println(s);
         }
-
-        reader.close();
-        System.out.println("Contacts loaded from file");
-
-    } catch (Exception e) {
-        System.out.println("No previous data found");
     }
 }
 }
