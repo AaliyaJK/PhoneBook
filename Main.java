@@ -37,6 +37,7 @@ public class Main {
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
+        contacts.loadFromFile();
 
         while (true) {
             System.out.println("\n--- PHONE BOOK ---");
@@ -84,6 +85,7 @@ public class Main {
                     break;
                 case 5:
                     System.out.println("Exiting...");
+                    contacts.saveToFile();
                     return;
                 case 6:
                     contacts.undo();
@@ -234,6 +236,45 @@ void showRecent() {
     System.out.println("Recent Searches:");
     for (String name : recent) {
         System.out.println(name);
+    }
+}
+void saveToFile() {
+    try {
+        java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.FileWriter("contacts.txt"));
+
+        Node temp = head;
+        while (temp != null) {
+            writer.write(temp.data.name + "," + temp.data.phone);
+            writer.newLine();
+            temp = temp.next;
+        }
+
+        writer.close();
+        System.out.println("Contacts saved to file");
+
+    } catch (Exception e) {
+        System.out.println("Error saving file");
+    }
+}
+void loadFromFile() {
+    try {
+        java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader("contacts.txt"));
+
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            String[] parts = line.split(",");
+            String name = parts[0];
+            String phone = parts[1];
+
+            insertWithoutUndo(new Contact(name, phone));
+        }
+
+        reader.close();
+        System.out.println("Contacts loaded from file");
+
+    } catch (Exception e) {
+        System.out.println("No previous data found");
     }
 }
 }
