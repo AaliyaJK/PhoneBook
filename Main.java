@@ -21,6 +21,16 @@ class Node {
     }
 }
 
+class Action {
+    String type; // "add", "delete"
+    Contact contact;
+
+    Action(String type, Contact contact) {
+        this.type = type;
+        this.contact = contact;
+    }
+}
+
 public class Main {
 
     static DoublyLinkedList contacts = new DoublyLinkedList();
@@ -33,7 +43,9 @@ public class Main {
             System.out.println("1. Add Contact");
             System.out.println("2. View Contacts");
             System.out.println("3. Search Contact");
-            System.out.println("4. Exit");
+            System.out.println("4. Delete Contact");
+            System.out.println("5. Exit");
+            System.out.println("6. Undo");
 
             int choice = sc.nextInt();
             sc.nextLine(); // consume newline
@@ -65,8 +77,16 @@ public class Main {
        }
                    break;
                 case 4:
+                    System.out.print("Enter name to delete: ");
+                    name = sc.nextLine();
+                    contacts.delete(name);
+                    break;
+                case 5:
                     System.out.println("Exiting...");
                     return;
+                case 6:
+                    contacts.undo();
+                    break;
                 default:
                     System.out.println("Invalid choice");
             }
@@ -77,6 +97,7 @@ public class Main {
     
 class DoublyLinkedList {
     HashMap<String, Node> map = new HashMap<>();
+    Stack<Action> undoStack = new Stack<>();
     Node head;
 
     void insert(Contact contact) {
@@ -85,6 +106,7 @@ class DoublyLinkedList {
         if (head == null) {
             head = newNode;
             map.put(contact.name.toLowerCase(), newNode);
+            undoStack.push(new Action("add",newNode.data));
             return;
             
         }
@@ -92,13 +114,71 @@ class DoublyLinkedList {
         Node temp = head;
         while (temp.next != null) {
             temp = temp.next;
+           
+
+    }   temp.next = newNode;
+        newNode.prev = temp;
+        temp=newNode;
+        map.put(contact.name.toLowerCase(), newNode);
+        undoStack.push(new Action("add",temp.data));
+} 
+    void insertWithoutUndo(Contact contact) {
+    Node newNode = new Node(contact);
+
+    if (head == null) {
+        head = newNode;
+    } else {
+        Node temp = head;
+        while (temp.next != null) {
+            temp = temp.next;
         }
 
         temp.next = newNode;
         newNode.prev = temp;
-        map.put(contact.name.toLowerCase(), newNode);
-
     }
+
+    map.put(contact.name.toLowerCase(), newNode);
+}
+    void delete(String name) {
+    Node node = map.get(name.toLowerCase());
+
+    if (node == null) {
+        System.out.println("Contact not found");
+        return;
+    }
+    undoStack.push(new Action("delete", node.data));
+
+    if (node.prev != null) {
+        node.prev.next = node.next;
+    } else {
+        head = node.next;
+    }
+
+    if (node.next != null) {
+        node.next.prev = node.prev;
+    }
+
+    map.remove(name.toLowerCase());
+
+    System.out.println("Deleted successfully");
+} 
+    void deleteWithoutUndo(String name) {
+    Node node = map.get(name.toLowerCase());
+
+    if (node == null) return;
+
+    if (node.prev != null) {
+        node.prev.next = node.next;
+    } else {
+        head = node.next;
+    }
+
+    if (node.next != null) {
+        node.next.prev = node.prev;
+    }
+
+    map.remove(name.toLowerCase());
+}
         void display() {
         Node temp = head;
 
@@ -107,6 +187,24 @@ class DoublyLinkedList {
             temp = temp.next;
         }
     }
+
+    void undo() {
+    if (undoStack.isEmpty()) {
+        System.out.println("Nothing to undo");
+        return;
+    }
+
+    Action last = undoStack.pop();
+
+    if (last.type.equals("add")) {
+        deleteWithoutUndo(last.contact.name);
+        System.out.println("Undo: Last add reversed");
+    }
+    else if (last.type.equals("delete")) {
+        insertWithoutUndo(last.contact);
+        System.out.println("Undo: Deleted contact restored");
+    }
+}
         Node search(String name) {
             return map.get(name.toLowerCase());
 }
