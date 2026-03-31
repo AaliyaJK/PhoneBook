@@ -46,6 +46,7 @@ public class Main {
             System.out.println("4. Delete Contact");
             System.out.println("5. Exit");
             System.out.println("6. Undo");
+            System.out.println("7. Show Recent Searches");
 
             int choice = sc.nextInt();
             sc.nextLine(); // consume newline
@@ -87,6 +88,9 @@ public class Main {
                 case 6:
                     contacts.undo();
                     break;
+                case 7:
+                    contacts.showRecent();
+                    break;
                 default:
                     System.out.println("Invalid choice");
             }
@@ -98,6 +102,7 @@ public class Main {
 class DoublyLinkedList {
     HashMap<String, Node> map = new HashMap<>();
     Stack<Action> undoStack = new Stack<>();
+    Queue<String> recent = new LinkedList<>();
     Node head;
 
     void insert(Contact contact) {
@@ -205,7 +210,30 @@ class DoublyLinkedList {
         System.out.println("Undo: Deleted contact restored");
     }
 }
-        Node search(String name) {
-            return map.get(name.toLowerCase());
+    Node search(String name) {
+            Node result = map.get(name.toLowerCase());
+
+            if (result != null) {
+        //  Add to queue
+            recent.add(name);
+
+        // limit size to 5
+            if (recent.size() > 5) {
+            recent.poll(); // removes oldest
+        }
+    }
+
+    return result;
+}
+void showRecent() {
+    if (recent.isEmpty()) {
+        System.out.println("No recent searches");
+        return;
+    }
+
+    System.out.println("Recent Searches:");
+    for (String name : recent) {
+        System.out.println(name);
+    }
 }
 }
